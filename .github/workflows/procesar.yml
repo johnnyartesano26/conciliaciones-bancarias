@@ -1,0 +1,76 @@
+name: Conciliación Bancaria
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'data/**'
+      - '.github/workflows/**'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  procesar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tesseract-ocr tesseract-ocr-spa
+
+      - name: Verify Tesseract
+        run: tesseract --list-langs
+
+      - name: Run agent
+        env:
+          GOOGLE_DRIVE_CREDENTIALS: ${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}
+          DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
+          DRIVE_UPLOAD_LINK: ${{ secrets.DRIVE_UPLOAD_LINK }}
+          DRIVE_LINK_EXTRACTOS: ${{ secrets.DRIVE_LINK_EXTRACTOS }}
+        run: python -m src.main
+
+      - name: Commit & push
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data/checklist.json index.html
+          git diff --staged --quiet || git commit -m "Actualización automática — $(date +'%d/%m/%Y %H:%M')"
+          git push
+
+  deploy:
+    needs: procesar
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

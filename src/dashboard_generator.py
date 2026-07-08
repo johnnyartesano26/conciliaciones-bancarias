@@ -1,0 +1,233 @@
+import json
+import logging
+from datetime import datetime
+
+from .config import Config
+
+logger = logging.getLogger(__name__)
+
+
+class DashboardGenerator:
+    def generate(self, resultados, resumen, drive=None):
+        """Genera el archivo checklist.json y el dashboard HTML"""
+
+        checklist_data = {
+            "titulo": "Conciliación de Comprobantes",
+            "subtitulo": "Comprobantes vs Extracto Bancario",
+            "actualizado": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+            "resumen": resumen,
+            "comprobantes": resultados,
+            "cuentas": [
+                {"id": "3598", "nombre": "Cervecería Madre Monte (3598)"},
+                {"id": "1490", "nombre": "Juliana Cardona (1490)"},
+                {"id": "9437", "nombre": "Johnny Guerrero (9437)"},
+                {"id": "2216", "nombre": "Cervecería Madre Monte (2216)"},
+            ],
+            "links_upload": {
+                "pendientes": Config.DRIVE_UPLOAD_LINK or "#",
+                "extractos": Config.DRIVE_LINK_EXTRACTOS or "#",
+            },
+        }
+
+        # Guardar JSON
+        with open(Config.CHECKLIST_FILE, "w", encoding="utf-8") as f:
+            json.dump(checklist_data, f, ensure_ascii=False, indent=2)
+
+        # Regenerar el dashboard HTML con los datos embebidos
+        self._write_dashboard(checklist_data)
+
+        # Subir JSON a Drive (opcional)
+        if drive:
+            drive.upload_file(str(Config.CHECKLIST_FILE), "Comprobantes/Procesados")
+
+        logger.info(f"Dashboard generado: {Config.DASHBOARD_FILE}")
+        logger.info(f"Checklist JSON: {Config.CHECKLIST_FILE}")
+
+    def _write_dashboard(self, data):
+        """Escribe el archivo index.html del dashboard"""
+        html = f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📋 Conciliación Bancaria — Madre Monte</title>
+<style>
+*{{margin:0;padding:0;box-sizing:border-box}}
+body{{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;min-height:100vh}}
+.header{{background:linear-gradient(135deg,#0f1117,#161b22);color:#fff;padding:24px 30px;border-bottom:3px solid #f0c040}}
+.header h1{{font-size:1.5em;color:#f0c040}}
+.header .sub{{opacity:.7;font-size:.85em;margin-top:4px}}
+.header .update{{font-size:.75em;opacity:.5;margin-top:6px}}
+.header .upload-links{{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap}}
+.header .upload-btn{{display:inline-flex;align-items:center;gap:8px;padding:8px 18px;background:#f0c040;color:#0f1117;border-radius:8px;text-decoration:none;font-size:.85em;font-weight:600;transition:all .2s}}
+.header .upload-btn:hover{{background:#ffd866;transform:translateY(-1px)}}
+.header .upload-btn.secondary{{background:transparent;border:1px solid #f0c040;color:#f0c040}}
+.header .upload-btn.secondary:hover{{background:rgba(240,192,64,.1)}}
+.content{{max-width:1400px;margin:0 auto;padding:24px}}
+.stats-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px}}
+.stat{{background:#fff;padding:18px 20px;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);text-align:center;border-left:4px solid #667eea}}
+.stat.s1{{border-left-color:#667eea}}.stat.s2{{border-left-color:#3fb950}}
+.stat.s3{{border-left-color:#f85149}}.stat.s4{{border-left-color:#d29922}}
+.stat .num{{font-size:1.8em;font-weight:700;color:#1a1a2e}}
+.stat .lab{{font-size:.75em;color:#666;margin-top:4px}}
+.stat .pct{{font-size:1.2em;font-weight:700;color:#667eea}}
+.cuentas-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:20px}}
+.cuenta-card{{background:#fff;padding:14px 18px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.05);display:flex;justify-content:space-between;align-items:center}}
+.cuenta-card .name{{font-weight:600;font-size:.9em;color:#1a1a2e}}
+.cuenta-card .nums{{display:flex;gap:16px;font-size:.8em;color:#666}}
+.cuenta-card .nums span{{font-weight:600}}.cuenta-card .nums .ok{{color:#3fb950}}.cuenta-card .nums .ko{{color:#f85149}}
+.filters{{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;padding:12px 16px;background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.05)}}
+.filters select,.filters input{{padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:.85em;font-family:inherit}}
+.filters input{{min-width:220px}}
+.table-wrap{{background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden}}
+.table-wrap h3{{padding:14px 18px;font-size:.95em;color:#1a1a2e;border-bottom:2px solid #e2e8f0}}
+.scroll{{max-height:60vh;overflow:auto}}
+table{{width:100%;border-collapse:collapse;font-size:.82em}}
+th{{background:#f7fafc;padding:10px 14px;text-align:left;font-weight:600;color:#4a5568;border-bottom:2px solid #e2e8f0;position:sticky;top:0;z-index:2;cursor:pointer;user-select:none;white-space:nowrap}}
+th:hover{{color:#f0c040}}
+td{{padding:9px 14px;border-bottom:1px solid #eee;vertical-align:middle}}
+tr:hover{{background:#f7fafc}}
+tr.confirmed{{background:#f0fff4}}tr.unconfirmed{{background:#fff8f8}}
+.badge{{display:inline-block;padding:3px 10px;border-radius:12px;font-size:.75em;font-weight:700}}
+.badge-ok{{background:#c6f6d5;color:#22543d}}.badge-ko{{background:#fed7d7;color:#742a2a}}
+.badge-pending{{background:#fefcbf;color:#744210}}
+.empty{{text-align:center;padding:40px;color:#888;font-size:.9em}}
+.footer{{text-align:center;padding:20px;color:#aaa;font-size:.75em}}
+@media(max-width:768px){{.stats-grid{{grid-template-columns:repeat(2,1fr)}}.header{{padding:16px}}th,td{{padding:6px 8px;font-size:.75em}}}}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>📋 Conciliación Bancaria</h1>
+<div class="sub">Comprobantes de pago vs Extracto Bancario</div>
+<div class="update">🔄 Última actualización: <strong>{data['actualizado']}</strong></div>
+<div class="upload-links">
+<a href="{data['links_upload']['pendientes']}" target="_blank" class="upload-btn">📸 Subir Comprobantes</a>
+<a href="{data['links_upload']['extractos']}" target="_blank" class="upload-btn secondary">🏦 Subir Extracto Bancario</a>
+</div>
+</div>
+
+<div class="content">
+<div class="stats-grid" id="stats"></div>
+<div class="cuentas-grid" id="cuentasCards"></div>
+
+<div class="filters">
+<select id="filtroProducto" onchange="filtrar()"><option value="">Todos los productos</option></select>
+<select id="filtroEstado" onchange="filtrar()">
+<option value="">Todos los estados</option>
+<option value="CONFIRMADO">✅ Confirmados</option>
+<option value="NO CONFIRMADO">❌ No confirmados</option>
+</select>
+<input type="text" id="search" placeholder="🔍 Buscar comprobante..." oninput="filtrar()">
+<span id="count" style="color:#888;align-self:center;font-size:.85em"></span>
+</div>
+
+<div class="table-wrap">
+<h3>📋 Detalle de Comprobantes</h3>
+<div class="scroll"><table>
+<thead><tr>
+<th onclick="sortTable('fecha')">Fecha</th>
+<th onclick="sortTable('comprobante')">N° Comprobante</th>
+<th onclick="sortTable('valor')">Valor</th>
+<th onclick="sortTable('producto')">Producto Destino</th>
+<th onclick="sortTable('cuenta')">Cuenta</th>
+<th onclick="sortTable('estado')">Estado</th>
+<th onclick="sortTable('archivo')">Archivo</th>
+</tr></thead>
+<tbody id="tbody"></tbody>
+</table></div>
+</div>
+</div>
+
+<div class="footer">Agente de Conciliación v1.0 · OCR + CSV + Checklist · Procesamiento automático</div>
+
+<script>
+const DATA = {json.dumps(data, ensure_ascii=False)};
+
+function init() {{
+document.getElementById('stats').innerHTML = `
+<div class="stat s1"><div class="num">${{DATA.resumen.total}}</div><div class="lab">Total Comprobantes</div></div>
+<div class="stat s2"><div class="num" style="color:#3fb950">${{DATA.resumen.confirmados}}</div><div class="lab">✅ Confirmados</div></div>
+<div class="stat s3"><div class="num" style="color:#f85149">${{DATA.resumen.no_confirmados}}</div><div class="lab">❌ No Confirmados</div></div>
+<div class="stat s4"><div class="pct">${{DATA.resumen.porcentaje}}%</div><div class="lab">Tasa de Conciliación</div></div>
+`;
+
+let cuentasHtml = '';
+DATA.cuentas.forEach(c => {{
+const cuenta = DATA.resumen.por_cuenta[c.nombre];
+if (cuenta) {{
+cuentasHtml += `<div class="cuenta-card">
+<div class="name">${{c.nombre}}</div>
+<div class="nums"><span>T: ${{cuenta.total}}</span><span class="ok">✓ ${{cuenta.confirmados}}</span><span class="ko">✗ ${{cuenta.total - cuenta.confirmados}}</span></div>
+</div>`;
+}}
+}});
+document.getElementById('cuentasCards').innerHTML = cuentasHtml;
+
+const filtro = document.getElementById('filtroProducto');
+DATA.cuentas.forEach(c => {{
+if (DATA.resumen.por_cuenta[c.nombre]) {{
+filtro.innerHTML += `<option value="${{c.nombre}}">${{c.nombre}}</option>`;
+}}
+}});
+
+renderTabla();
+}}
+
+function renderTabla(filtrados = null) {{
+const rows = filtrados || DATA.comprobantes;
+const tbody = document.getElementById('tbody');
+if (!rows || rows.length === 0) {{
+tbody.innerHTML = '<tr><td colspan="7" class="empty">No hay comprobantes registrados</td></tr>';
+document.getElementById('count').textContent = '';
+return;
+}}
+tbody.innerHTML = rows.map((r,i) => {{
+const cls = r.estado.includes('CONFIRMADO') ? 'confirmed' : 'unconfirmed';
+const badge = r.estado.includes('CONFIRMADO')
+? '<span class="badge badge-ok">✅ Confirmado</span>'
+: '<span class="badge badge-ko">❌ No Confirmado</span>';
+return `<tr class="${{cls}}" data-idx="${{i}}">
+<td>${{r.fecha||''}}</td>
+<td><strong>${{r.comprobante||''}}</strong></td>
+<td>$${{(r.valor||0).toLocaleString('es-CO')}}</td>
+<td>${{r.producto||''}}</td>
+<td>${{r.cuenta||''}}</td>
+<td>${{badge}}</td>
+<td style="font-size:.8em;color:#888">${{r.archivo||''}}</td>
+</tr>`;
+}}).join('');
+document.getElementById('count').textContent = `Mostrando ${{rows.length}} de ${{DATA.comprobantes.length}}`;
+}}
+
+let currentSort = {{col:'fecha',asc:false}};
+function sortTable(col) {{
+if (currentSort.col === col) currentSort.asc = !currentSort.asc;
+else {{ currentSort.col = col; currentSort.asc = true; }}
+const sorted = [...DATA.comprobantes].sort((a,b) => {{
+let va = a[col]||'', vb = b[col]||'';
+if (typeof va === 'number' && typeof vb === 'number') return currentSort.asc ? va-vb : vb-va;
+va = String(va).toLowerCase(); vb = String(vb).toLowerCase();
+return currentSort.asc ? va.localeCompare(vb) : vb.localeCompare(va);
+}});
+renderTabla(sorted);
+}}
+
+function filtrar() {{
+const prod = document.getElementById('filtroProducto').value;
+const estado = document.getElementById('filtroEstado').value;
+const search = document.getElementById('search').value.toLowerCase();
+let rows = DATA.comprobantes;
+if (prod) rows = rows.filter(r => r.producto === prod);
+if (estado) rows = rows.filter(r => r.estado.includes(estado));
+if (search) rows = rows.filter(r => (r.comprobante||'').toLowerCase().includes(search) || (r.archivo||'').toLowerCase().includes(search));
+renderTabla(rows);
+}}
+
+init();
+</script>
+</body>
+</html>"""
+
+        with open(Config.DASHBOARD_FILE, "w", encoding="utf-8") as f:
+            f.write(html)

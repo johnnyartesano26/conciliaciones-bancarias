@@ -1,0 +1,23 @@
+{
+  "titulo": "Conciliación de Comprobantes",
+  "subtitulo": "Comprobantes vs Extracto Bancario",
+  "actualizado": "2026-07-08 00:00",
+  "resumen": {
+    "total": 0,
+    "confirmados": 0,
+    "no_confirmados": 0,
+    "porcentaje": 0,
+    "por_cuenta": {}
+  },
+  "comprobantes": [],
+  "cuentas": [
+    {"id": "3598", "nombre": "Cervecería Madre Monte (3598)"},
+    {"id": "1490", "nombre": "Juliana Cardona (1490)"},
+    {"id": "9437", "nombre": "Johnny Guerrero (9437)"},
+    {"id": "2216", "nombre": "Cervecería Madre Monte (2216)"}
+  ],
+  "links_upload": {
+    "pendientes": "#",
+    "extractos": "#"
+  }
+}
