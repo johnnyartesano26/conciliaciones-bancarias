@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>📋 Conciliación Bancaria — Madre Monte</title>
+<title>Conciliacion Bancaria — Madre Monte</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;min-height:100vh}
@@ -28,7 +28,9 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;min-height:1
 .cuenta-card{background:#fff;padding:14px 18px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.05);display:flex;justify-content:space-between;align-items:center}
 .cuenta-card .name{font-weight:600;font-size:.9em;color:#1a1a2e}
 .cuenta-card .nums{display:flex;gap:16px;font-size:.8em;color:#666}
-.cuenta-card .nums span{font-weight:600}.cuenta-card .nums .ok{color:#3fb950}.cuenta-card .nums .ko{color:#f85149}
+.cuenta-card .nums span{font-weight:600}
+.cuenta-card .nums .ok{color:#3fb950}
+.cuenta-card .nums .ko{color:#f85149}
 .filters{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;padding:12px 16px;background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
 .filters select,.filters input{padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:.85em;font-family:inherit}
 .filters input{min-width:220px}
@@ -43,40 +45,48 @@ tr:hover{background:#f7fafc}
 tr.confirmed{background:#f0fff4}tr.unconfirmed{background:#fff8f8}
 .badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:.75em;font-weight:700}
 .badge-ok{background:#c6f6d5;color:#22543d}.badge-ko{background:#fed7d7;color:#742a2a}
-.badge-pending{background:#fefcbf;color:#744210}
 .empty{text-align:center;padding:40px;color:#888;font-size:.9em}
+.error-box{background:#fff5f5;border:1px solid #feb2b2;color:#c53030;padding:20px;border-radius:10px;text-align:center;margin-bottom:20px;display:none}
+.error-box.show{display:block}
+.loading{text-align:center;padding:20px;color:#888}
 .footer{text-align:center;padding:20px;color:#aaa;font-size:.75em}
 @media(max-width:768px){.stats-grid{grid-template-columns:repeat(2,1fr)}.header{padding:16px}th,td{padding:6px 8px;font-size:.75em}}
 </style>
 </head>
 <body>
+
 <div class="header">
-<h1>📋 Conciliación Bancaria</h1>
+<h1>Conciliacion Bancaria</h1>
 <div class="sub">Comprobantes de pago vs Extracto Bancario</div>
-<div class="update">🔄 Última actualización: <strong>08/07/2026 16:29:04</strong></div>
+<div class="update" id="headerUpdate">Cargando datos...</div>
 <div class="upload-links">
-<a href="https://drive.google.com/drive/folders/1mXZMQ6u-uQ-2IstEIn_KOWo0FRBejfbh" target="_blank" class="upload-btn">📸 Subir Comprobantes</a>
-<a href="https://drive.google.com/drive/folders/1IJjPaz_e5Um1pcbyYamLTotJGPcSGfLf" target="_blank" class="upload-btn secondary">🏦 Subir Extracto Bancario</a>
+<a href="https://drive.google.com/drive/folders/1mXZMQ6u-uQ-2IstEIn_KOWo0FRBejfbh" target="_blank" class="upload-btn">Subir Comprobantes</a>
+<a href="https://drive.google.com/drive/folders/1IJjPaz_e5Um1pcbyYamLTotJGPcSGfLf" target="_blank" class="upload-btn secondary">Subir Extracto Bancario</a>
 </div>
 </div>
 
 <div class="content">
-<div class="stats-grid" id="stats"></div>
-<div class="cuentas-grid" id="cuentasCards"></div>
+<div class="error-box" id="errorBox"></div>
+<div class="stats-grid" id="stats">
+<div class="stat s1"><div class="num">--</div><div class="lab">Total Comprobantes</div></div>
+<div class="stat s2"><div class="num" style="color:#3fb950">--</div><div class="lab">Confirmados</div></div>
+<div class="stat s3"><div class="num" style="color:#f85149">--</div><div class="lab">No Confirmados</div></div>
+<div class="stat s4"><div class="pct">--%</div><div class="lab">Tasa de Conciliacion</div></div>
+</div>
 
 <div class="filters">
 <select id="filtroProducto" onchange="filtrar()"><option value="">Todos los productos</option></select>
 <select id="filtroEstado" onchange="filtrar()">
 <option value="">Todos los estados</option>
-<option value="CONFIRMADO">✅ Confirmados</option>
-<option value="NO CONFIRMADO">❌ No confirmados</option>
+<option value="CONFIRMADO">Confirmados</option>
+<option value="NO CONFIRMADO">No confirmados</option>
 </select>
-<input type="text" id="search" placeholder="🔍 Buscar comprobante..." oninput="filtrar()">
+<input type="text" id="search" placeholder="Buscar comprobante..." oninput="filtrar()">
 <span id="count" style="color:#888;align-self:center;font-size:.85em"></span>
 </div>
 
 <div class="table-wrap">
-<h3>📋 Detalle de Comprobantes</h3>
+<h3>Detalle de Comprobantes</h3>
 <div class="scroll"><table>
 <thead><tr>
 <th onclick="sortTable('fecha')">Fecha</th>
@@ -87,97 +97,124 @@ tr.confirmed{background:#f0fff4}tr.unconfirmed{background:#fff8f8}
 <th onclick="sortTable('estado')">Estado</th>
 <th onclick="sortTable('archivo')">Archivo</th>
 </tr></thead>
-<tbody id="tbody"></tbody>
+<tbody id="tbody">
+<tr><td colspan="7" class="loading">Cargando datos...</td></tr>
+</tbody>
 </table></div>
 </div>
+
+<div class="footer">Agente de Conciliacion v1.0 · OCR + CSV + Checklist · Procesamiento automatico</div>
 </div>
 
-<div class="footer">Agente de Conciliación v1.0 · OCR + CSV + Checklist · Procesamiento automático</div>
-
 <script>
-const DATA = {"titulo": "Conciliación de Comprobantes", "subtitulo": "Comprobantes vs Extracto Bancario", "actualizado": "08/07/2026 16:29:04", "resumen": {"total": 0, "confirmados": 0, "no_confirmados": 0, "porcentaje": 0, "por_cuenta": {}, "fecha_ultima_actualizacion": "08/07/2026 16:29"}, "comprobantes": [], "cuentas": [{"id": "3598", "nombre": "Cervecería Madre Monte (3598)"}, {"id": "1490", "nombre": "Juliana Cardona (1490)"}, {"id": "9437", "nombre": "Johnny Guerrero (9437)"}, {"id": "2216", "nombre": "Cervecería Madre Monte (2216)"}], "links_upload": {"pendientes": "#", "extractos": "#"}};
+var DATA = { comprobantes: [], resumen: { total: 0, confirmados: 0, no_confirmados: 0, porcentaje: 0, por_cuenta: {} }, cuentas: [], links_upload: {} };
+var currentSort = { col: 'fecha', asc: false };
 
-function init() {
-document.getElementById('stats').innerHTML = `
-<div class="stat s1"><div class="num">${DATA.resumen.total}</div><div class="lab">Total Comprobantes</div></div>
-<div class="stat s2"><div class="num" style="color:#3fb950">${DATA.resumen.confirmados}</div><div class="lab">✅ Confirmados</div></div>
-<div class="stat s3"><div class="num" style="color:#f85149">${DATA.resumen.no_confirmados}</div><div class="lab">❌ No Confirmados</div></div>
-<div class="stat s4"><div class="pct">${DATA.resumen.porcentaje}%</div><div class="lab">Tasa de Conciliación</div></div>
-`;
-
-let cuentasHtml = '';
-DATA.cuentas.forEach(c => {
-const cuenta = DATA.resumen.por_cuenta[c.nombre];
-if (cuenta) {
-cuentasHtml += `<div class="cuenta-card">
-<div class="name">${c.nombre}</div>
-<div class="nums"><span>T: ${cuenta.total}</span><span class="ok">✓ ${cuenta.confirmados}</span><span class="ko">✗ ${cuenta.total - cuenta.confirmados}</span></div>
-</div>`;
-}
-});
-document.getElementById('cuentasCards').innerHTML = cuentasHtml;
-
-const filtro = document.getElementById('filtroProducto');
-DATA.cuentas.forEach(c => {
-if (DATA.resumen.por_cuenta[c.nombre]) {
-filtro.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`;
-}
-});
-
-renderTabla();
+function showError(msg) {
+  var box = document.getElementById('errorBox');
+  box.textContent = msg;
+  box.className = 'error-box show';
 }
 
-function renderTabla(filtrados = null) {
-const rows = filtrados || DATA.comprobantes;
-const tbody = document.getElementById('tbody');
-if (!rows || rows.length === 0) {
-tbody.innerHTML = '<tr><td colspan="7" class="empty">No hay comprobantes registrados</td></tr>';
-document.getElementById('count').textContent = '';
-return;
-}
-tbody.innerHTML = rows.map((r,i) => {
-const cls = r.estado.includes('CONFIRMADO') ? 'confirmed' : 'unconfirmed';
-const badge = r.estado.includes('CONFIRMADO')
-? '<span class="badge badge-ok">✅ Confirmado</span>'
-: '<span class="badge badge-ko">❌ No Confirmado</span>';
-return `<tr class="${cls}" data-idx="${i}">
-<td>${r.fecha||''}</td>
-<td><strong>${r.comprobante||''}</strong></td>
-<td>$${(r.valor||0).toLocaleString('es-CO')}</td>
-<td>${r.producto||''}</td>
-<td>${r.cuenta||''}</td>
-<td>${badge}</td>
-<td style="font-size:.8em;color:#888">${r.archivo||''}</td>
-</tr>`;
-}).join('');
-document.getElementById('count').textContent = `Mostrando ${rows.length} de ${DATA.comprobantes.length}`;
+function loadData() {
+  fetch('data/checklist.json')
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(json) {
+      DATA = json;
+      renderAll();
+    })
+    .catch(function(e) {
+      showError('No se pudo cargar datos: ' + e.message + '. Verifica que el archivo data/checklist.json exista.');
+      document.getElementById('tbody').innerHTML = '<tr><td colspan="7" class="empty">Error al cargar datos</td></tr>';
+      document.getElementById('headerUpdate').innerHTML = 'Sin conexion al JSON';
+      document.getElementById('stats').innerHTML =
+        '<div class="stat s1"><div class="num">0</div><div class="lab">Total Comprobantes</div></div>' +
+        '<div class="stat s2"><div class="num" style="color:#3fb950">0</div><div class="lab">Confirmados</div></div>' +
+        '<div class="stat s3"><div class="num" style="color:#f85149">0</div><div class="lab">No Confirmados</div></div>' +
+        '<div class="stat s4"><div class="pct">0%</div><div class="lab">Tasa de Conciliacion</div></div>';
+    });
 }
 
-let currentSort = {col:'fecha',asc:false};
+function renderAll() {
+  document.getElementById('headerUpdate').innerHTML = 'Ultima actualizacion: <strong>' + (DATA.actualizado || '--') + '</strong>';
+
+  document.getElementById('stats').innerHTML =
+    '<div class="stat s1"><div class="num">' + (DATA.resumen.total || 0) + '</div><div class="lab">Total Comprobantes</div></div>' +
+    '<div class="stat s2"><div class="num" style="color:#3fb950">' + (DATA.resumen.confirmados || 0) + '</div><div class="lab">Confirmados</div></div>' +
+    '<div class="stat s3"><div class="num" style="color:#f85149">' + (DATA.resumen.no_confirmados || 0) + '</div><div class="lab">No Confirmados</div></div>' +
+    '<div class="stat s4"><div class="pct">' + (DATA.resumen.porcentaje || 0) + '%</div><div class="lab">Tasa de Conciliacion</div></div>';
+
+  var filtro = document.getElementById('filtroProducto');
+  filtro.innerHTML = '<option value="">Todos los productos</option>';
+  var porCuenta = DATA.resumen.por_cuenta || {};
+  Object.keys(porCuenta).forEach(function(nombre) {
+    filtro.innerHTML += '<option value="' + nombre + '">' + nombre + '</option>';
+  });
+
+  renderTabla();
+}
+
+function renderTabla(filtrados) {
+  var rows = filtrados || DATA.comprobantes;
+  var tbody = document.getElementById('tbody');
+
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">No hay comprobantes registrados</td></tr>';
+    document.getElementById('count').textContent = '';
+    return;
+  }
+
+  var html = '';
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var cls = (r.estado || '').indexOf('CONFIRMADO') >= 0 ? 'confirmed' : 'unconfirmed';
+    var badge = (r.estado || '').indexOf('CONFIRMADO') >= 0
+      ? '<span class="badge badge-ok">Confirmado</span>'
+      : '<span class="badge badge-ko">No Confirmado</span>';
+    var valor = (r.valor || 0).toLocaleString ? (r.valor || 0).toLocaleString('es-CO') : (r.valor || 0);
+    html += '<tr class="' + cls + '">' +
+      '<td>' + (r.fecha || '') + '</td>' +
+      '<td><strong>' + (r.comprobante || '') + '</strong></td>' +
+      '<td>$' + valor + '</td>' +
+      '<td>' + (r.producto || '') + '</td>' +
+      '<td>' + (r.cuenta || '') + '</td>' +
+      '<td>' + badge + '</td>' +
+      '<td style="font-size:.8em;color:#888">' + (r.archivo || '') + '</td>' +
+      '</tr>';
+  }
+  tbody.innerHTML = html;
+  document.getElementById('count').textContent = 'Mostrando ' + rows.length + ' de ' + DATA.comprobantes.length;
+}
+
 function sortTable(col) {
-if (currentSort.col === col) currentSort.asc = !currentSort.asc;
-else { currentSort.col = col; currentSort.asc = true; }
-const sorted = [...DATA.comprobantes].sort((a,b) => {
-let va = a[col]||'', vb = b[col]||'';
-if (typeof va === 'number' && typeof vb === 'number') return currentSort.asc ? va-vb : vb-va;
-va = String(va).toLowerCase(); vb = String(vb).toLowerCase();
-return currentSort.asc ? va.localeCompare(vb) : vb.localeCompare(va);
-});
-renderTabla(sorted);
+  if (currentSort.col === col) currentSort.asc = !currentSort.asc;
+  else { currentSort.col = col; currentSort.asc = true; }
+  var sorted = DATA.comprobantes.slice().sort(function(a, b) {
+    var va = a[col] || '', vb = b[col] || '';
+    if (typeof va === 'number' && typeof vb === 'number') return currentSort.asc ? va - vb : vb - va;
+    va = String(va).toLowerCase(); vb = String(vb).toLowerCase();
+    return currentSort.asc ? va.localeCompare(vb) : vb.localeCompare(va);
+  });
+  renderTabla(sorted);
 }
 
 function filtrar() {
-const prod = document.getElementById('filtroProducto').value;
-const estado = document.getElementById('filtroEstado').value;
-const search = document.getElementById('search').value.toLowerCase();
-let rows = DATA.comprobantes;
-if (prod) rows = rows.filter(r => r.producto === prod);
-if (estado) rows = rows.filter(r => r.estado.includes(estado));
-if (search) rows = rows.filter(r => (r.comprobante||'').toLowerCase().includes(search) || (r.archivo||'').toLowerCase().includes(search));
-renderTabla(rows);
+  var prod = document.getElementById('filtroProducto').value;
+  var estado = document.getElementById('filtroEstado').value;
+  var search = document.getElementById('search').value.toLowerCase();
+  var rows = DATA.comprobantes;
+  if (prod) rows = rows.filter(function(r) { return r.producto === prod; });
+  if (estado) rows = rows.filter(function(r) { return (r.estado || '').indexOf(estado) >= 0; });
+  if (search) rows = rows.filter(function(r) {
+    return (r.comprobante || '').toLowerCase().indexOf(search) >= 0 || (r.archivo || '').toLowerCase().indexOf(search) >= 0;
+  });
+  renderTabla(rows);
 }
 
-init();
+loadData();
 </script>
 </body>
 </html>

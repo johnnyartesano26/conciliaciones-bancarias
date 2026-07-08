@@ -50,7 +50,7 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add data/checklist.json index.html
+          git add data/checklist.json
           if git diff --staged --quiet; then echo "No changes"; else git commit -m "Actualización automática — $(date +'%d/%m/%Y %H:%M')" && git push; fi
 
   deploy:
