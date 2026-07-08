@@ -43,11 +43,8 @@ tr:hover{background:#f7fafc}
 tr.confirmed{background:#f0fff4}tr.unconfirmed{background:#fff8f8}
 .badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:.75em;font-weight:700}
 .badge-ok{background:#c6f6d5;color:#22543d}.badge-ko{background:#fed7d7;color:#742a2a}
+.badge-pending{background:#fefcbf;color:#744210}
 .empty{text-align:center;padding:40px;color:#888;font-size:.9em}
-.setup-box{background:#fff;border-radius:10px;padding:30px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:20px}
-.setup-box h2{color:#1a1a2e;margin-bottom:12px}
-.setup-box p{color:#666;font-size:.9em;margin-bottom:20px;line-height:1.6}
-.setup-box .steps{text-align:left;max-width:500px;margin:0 auto;color:#444;font-size:.85em;line-height:1.8}
 .footer{text-align:center;padding:20px;color:#aaa;font-size:.75em}
 @media(max-width:768px){.stats-grid{grid-template-columns:repeat(2,1fr)}.header{padding:16px}th,td{padding:6px 8px;font-size:.75em}}
 </style>
@@ -56,7 +53,7 @@ tr.confirmed{background:#f0fff4}tr.unconfirmed{background:#fff8f8}
 <div class="header">
 <h1>📋 Conciliación Bancaria</h1>
 <div class="sub">Comprobantes de pago vs Extracto Bancario</div>
-<div class="update">🔄 Configuración inicial — Pendiente de datos</div>
+<div class="update">🔄 Última actualización: <strong>08/07/2026 16:29:04</strong></div>
 <div class="upload-links">
 <a href="#" target="_blank" class="upload-btn">📸 Subir Comprobantes</a>
 <a href="#" target="_blank" class="upload-btn secondary">🏦 Subir Extracto Bancario</a>
@@ -64,24 +61,8 @@ tr.confirmed{background:#f0fff4}tr.unconfirmed{background:#fff8f8}
 </div>
 
 <div class="content">
-<div class="stats-grid">
-<div class="stat s1"><div class="num">0</div><div class="lab">Total Comprobantes</div></div>
-<div class="stat s2"><div class="num" style="color:#3fb950">0</div><div class="lab">✅ Confirmados</div></div>
-<div class="stat s3"><div class="num" style="color:#f85149">0</div><div class="lab">❌ No Confirmados</div></div>
-<div class="stat s4"><div class="pct">0%</div><div class="lab">Tasa de Conciliación</div></div>
-</div>
-
-<div class="setup-box">
-<h2>⚙️ Configuración Inicial</h2>
-<p>Para comenzar a usar el sistema de conciliación bancaria, sigue estos pasos:</p>
-<ol class="steps">
-<li>🔑 Configura las credenciales de Google Drive en GitHub Secrets</li>
-<li>📸 Sube fotos de comprobantes a la carpeta de Drive</li>
-<li>🏦 Sube el extracto bancario en formato CSV</li>
-<li>🚀 Ejecuta el workflow de GitHub Actions manualmente</li>
-<li>📊 El dashboard se actualizará automáticamente</li>
-</ol>
-</div>
+<div class="stats-grid" id="stats"></div>
+<div class="cuentas-grid" id="cuentasCards"></div>
 
 <div class="filters">
 <select id="filtroProducto" onchange="filtrar()"><option value="">Todos los productos</option></select>
@@ -91,87 +72,112 @@ tr.confirmed{background:#f0fff4}tr.unconfirmed{background:#fff8f8}
 <option value="NO CONFIRMADO">❌ No confirmados</option>
 </select>
 <input type="text" id="search" placeholder="🔍 Buscar comprobante..." oninput="filtrar()">
+<span id="count" style="color:#888;align-self:center;font-size:.85em"></span>
 </div>
 
 <div class="table-wrap">
 <h3>📋 Detalle de Comprobantes</h3>
 <div class="scroll"><table>
 <thead><tr>
-<th>Fecha</th><th>N° Comprobante</th><th>Valor</th><th>Producto Destino</th><th>Cuenta</th><th>Estado</th><th>Archivo</th>
+<th onclick="sortTable('fecha')">Fecha</th>
+<th onclick="sortTable('comprobante')">N° Comprobante</th>
+<th onclick="sortTable('valor')">Valor</th>
+<th onclick="sortTable('producto')">Producto Destino</th>
+<th onclick="sortTable('cuenta')">Cuenta</th>
+<th onclick="sortTable('estado')">Estado</th>
+<th onclick="sortTable('archivo')">Archivo</th>
 </tr></thead>
-<tbody><tr><td colspan="7" class="empty">No hay comprobantes registrados — Sube imágenes para comenzar</td></tr></tbody>
+<tbody id="tbody"></tbody>
 </table></div>
 </div>
 </div>
 
-<div class="footer">Agente de Conciliación v1.0 · OCR + CSV + Checklist · Procesamiento automático vía GitHub Actions</div>
+<div class="footer">Agente de Conciliación v1.0 · OCR + CSV + Checklist · Procesamiento automático</div>
 
 <script>
-let DATA = { comprobantes: [], resumen: { total: 0, confirmados: 0, no_confirmados: 0, porcentaje: 0, por_cuenta: {} }, cuentas: [{id:"3598",nombre:"Cervecería Madre Monte (3598)"},{id:"1490",nombre:"Juliana Cardona (1490)"},{id:"9437",nombre:"Johnny Guerrero (9437)"},{id:"2216",nombre:"Cervecería Madre Monte (2216)"}] };
+const DATA = {"titulo": "Conciliación de Comprobantes", "subtitulo": "Comprobantes vs Extracto Bancario", "actualizado": "08/07/2026 16:29:04", "resumen": {"total": 0, "confirmados": 0, "no_confirmados": 0, "porcentaje": 0, "por_cuenta": {}, "fecha_ultima_actualizacion": "08/07/2026 16:29"}, "comprobantes": [], "cuentas": [{"id": "3598", "nombre": "Cervecería Madre Monte (3598)"}, {"id": "1490", "nombre": "Juliana Cardona (1490)"}, {"id": "9437", "nombre": "Johnny Guerrero (9437)"}, {"id": "2216", "nombre": "Cervecería Madre Monte (2216)"}], "links_upload": {"pendientes": "#", "extractos": "#"}};
 
-async function loadData() {
-  try {
-    const r = await fetch('data/checklist.json');
-    DATA = await r.json();
-    renderAll();
-  } catch(e) {
-    console.log('Usando datos semilla — sin checklist.json');
-    renderAll();
-  }
+function init() {
+document.getElementById('stats').innerHTML = `
+<div class="stat s1"><div class="num">${DATA.resumen.total}</div><div class="lab">Total Comprobantes</div></div>
+<div class="stat s2"><div class="num" style="color:#3fb950">${DATA.resumen.confirmados}</div><div class="lab">✅ Confirmados</div></div>
+<div class="stat s3"><div class="num" style="color:#f85149">${DATA.resumen.no_confirmados}</div><div class="lab">❌ No Confirmados</div></div>
+<div class="stat s4"><div class="pct">${DATA.resumen.porcentaje}%</div><div class="lab">Tasa de Conciliación</div></div>
+`;
+
+let cuentasHtml = '';
+DATA.cuentas.forEach(c => {
+const cuenta = DATA.resumen.por_cuenta[c.nombre];
+if (cuenta) {
+cuentasHtml += `<div class="cuenta-card">
+<div class="name">${c.nombre}</div>
+<div class="nums"><span>T: ${cuenta.total}</span><span class="ok">✓ ${cuenta.confirmados}</span><span class="ko">✗ ${cuenta.total - cuenta.confirmados}</span></div>
+</div>`;
+}
+});
+document.getElementById('cuentasCards').innerHTML = cuentasHtml;
+
+const filtro = document.getElementById('filtroProducto');
+DATA.cuentas.forEach(c => {
+if (DATA.resumen.por_cuenta[c.nombre]) {
+filtro.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`;
+}
+});
+
+renderTabla();
 }
 
-function renderAll() {
-  document.querySelector('.update').innerHTML = '🔄 Última actualización: <strong>' + (DATA.actualizado || 'Sin datos') + '</strong>';
-
-  document.querySelector('.stats-grid').innerHTML = `
-    <div class="stat s1"><div class="num">${DATA.comprobantes.length}</div><div class="lab">Total Comprobantes</div></div>
-    <div class="stat s2"><div class="num" style="color:#3fb950">${DATA.resumen.confirmados || 0}</div><div class="lab">✅ Confirmados</div></div>
-    <div class="stat s3"><div class="num" style="color:#f85149">${DATA.resumen.no_confirmados || 0}</div><div class="lab">❌ No Confirmados</div></div>
-    <div class="stat s4"><div class="pct">${DATA.resumen.porcentaje || 0}%</div><div class="lab">Tasa de Conciliación</div></div>
-  `;
-
-  const filtro = document.getElementById('filtroProducto');
-  filtro.innerHTML = '<option value="">Todos los productos</option>';
-  const porCuenta = DATA.resumen.por_cuenta || {};
-  Object.entries(porCuenta).forEach(([nombre, info]) => {
-    filtro.innerHTML += `<option value="${nombre}">${nombre}</option>`;
-  });
-
-  renderTabla();
+function renderTabla(filtrados = null) {
+const rows = filtrados || DATA.comprobantes;
+const tbody = document.getElementById('tbody');
+if (!rows || rows.length === 0) {
+tbody.innerHTML = '<tr><td colspan="7" class="empty">No hay comprobantes registrados</td></tr>';
+document.getElementById('count').textContent = '';
+return;
+}
+tbody.innerHTML = rows.map((r,i) => {
+const cls = r.estado.includes('CONFIRMADO') ? 'confirmed' : 'unconfirmed';
+const badge = r.estado.includes('CONFIRMADO')
+? '<span class="badge badge-ok">✅ Confirmado</span>'
+: '<span class="badge badge-ko">❌ No Confirmado</span>';
+return `<tr class="${cls}" data-idx="${i}">
+<td>${r.fecha||''}</td>
+<td><strong>${r.comprobante||''}</strong></td>
+<td>$${(r.valor||0).toLocaleString('es-CO')}</td>
+<td>${r.producto||''}</td>
+<td>${r.cuenta||''}</td>
+<td>${badge}</td>
+<td style="font-size:.8em;color:#888">${r.archivo||''}</td>
+</tr>`;
+}).join('');
+document.getElementById('count').textContent = `Mostrando ${rows.length} de ${DATA.comprobantes.length}`;
 }
 
-function renderTabla(filtrados) {
-  const rows = filtrados || DATA.comprobantes;
-  const tbody = document.querySelector('tbody');
-  if (!rows || rows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty">No hay comprobantes registrados — Sube imágenes para comenzar</td></tr>';
-    return;
-  }
-  tbody.innerHTML = rows.map(r => {
-    const cls = (r.estado||'').includes('CONFIRMADO') ? 'confirmed' : 'unconfirmed';
-    const badge = (r.estado||'').includes('CONFIRMADO')
-      ? '<span class="badge badge-ok">✅ Confirmado</span>'
-      : '<span class="badge badge-ko">❌ No Confirmado</span>';
-    return `<tr class="${cls}">
-      <td>${r.fecha||''}</td><td><strong>${r.comprobante||''}</strong></td>
-      <td>$${(r.valor||0).toLocaleString('es-CO')}</td><td>${r.producto||''}</td>
-      <td>${r.cuenta||''}</td><td>${badge}</td><td style="font-size:.8em;color:#888">${r.archivo||''}</td>
-    </tr>`;
-  }).join('');
+let currentSort = {col:'fecha',asc:false};
+function sortTable(col) {
+if (currentSort.col === col) currentSort.asc = !currentSort.asc;
+else { currentSort.col = col; currentSort.asc = true; }
+const sorted = [...DATA.comprobantes].sort((a,b) => {
+let va = a[col]||'', vb = b[col]||'';
+if (typeof va === 'number' && typeof vb === 'number') return currentSort.asc ? va-vb : vb-va;
+va = String(va).toLowerCase(); vb = String(vb).toLowerCase();
+return currentSort.asc ? va.localeCompare(vb) : vb.localeCompare(va);
+});
+renderTabla(sorted);
 }
 
 function filtrar() {
-  const prod = document.getElementById('filtroProducto').value;
-  const estado = document.getElementById('filtroEstado').value;
-  const search = document.getElementById('search').value.toLowerCase();
-  let rows = DATA.comprobantes;
-  if (prod) rows = rows.filter(r => r.producto === prod);
-  if (estado) rows = rows.filter(r => (r.estado||'').includes(estado));
-  if (search) rows = rows.filter(r => (r.comprobante||'').toLowerCase().includes(search));
-  renderTabla(rows);
+const prod = document.getElementById('filtroProducto').value;
+const estado = document.getElementById('filtroEstado').value;
+const search = document.getElementById('search').value.toLowerCase();
+let rows = DATA.comprobantes;
+if (prod) rows = rows.filter(r => r.producto === prod);
+if (estado) rows = rows.filter(r => r.estado.includes(estado));
+if (search) rows = rows.filter(r => (r.comprobante||'').toLowerCase().includes(search) || (r.archivo||'').toLowerCase().includes(search));
+renderTabla(rows);
 }
 
-loadData();
+init();
 </script>
 </body>
 </html>
