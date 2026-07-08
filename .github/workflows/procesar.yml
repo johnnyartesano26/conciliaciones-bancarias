@@ -10,6 +10,7 @@ on:
       - 'src/**'
       - 'data/**'
       - '.github/workflows/**'
+      - 'index.html'
 
 permissions:
   contents: write
@@ -19,8 +20,6 @@ permissions:
 jobs:
   procesar:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,21 +46,22 @@ jobs:
           DRIVE_LINK_EXTRACTOS: ${{ secrets.DRIVE_LINK_EXTRACTOS }}
         run: python -m src.main
 
-      - name: Commit & push
+      - name: Commit & push if changes
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add data/checklist.json index.html
-          git diff --staged --quiet || git commit -m "Actualización automática — $(date +'%d/%m/%Y %H:%M')"
-          git push
+          if git diff --staged --quiet; then echo "No changes"; else git commit -m "Actualización automática — $(date +'%d/%m/%Y %H:%M')" && git push; fi
 
   deploy:
     needs: procesar
-    if: success()
+    if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
