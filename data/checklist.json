@@ -1,14 +1,14 @@
 {
   "titulo": "Conciliación de Comprobantes",
   "subtitulo": "Comprobantes vs Extracto Bancario",
-  "actualizado": "18/07/2026 19:12:06",
+  "actualizado": "19/07/2026 03:22:58",
   "resumen": {
     "total": 0,
     "confirmados": 0,
     "no_confirmados": 0,
     "porcentaje": 0,
     "por_cuenta": {},
-    "fecha_ultima_actualizacion": "18/07/2026 19:12"
+    "fecha_ultima_actualizacion": "19/07/2026 03:22"
   },
   "comprobantes": [],
   "cuentas": [
